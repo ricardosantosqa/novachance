@@ -27,9 +27,7 @@ const icons = {
 };
 
 function getCatalogPath() {
-  // Works for GitHub Pages in a subfolder and for direct /index.html access.
   if (document.body?.dataset?.page === 'product') {
-    // /products/<slug>/index.html
     return '../../catalog.json';
   }
   return './catalog.json';
@@ -62,7 +60,6 @@ function shareProduct(product) {
       url: link,
     }).catch(err => console.log('Compartilhamento cancelado:', err));
   } else {
-    // Fallback: copiar para clipboard e abrir WhatsApp
     const whatsappUrl = buildWhatsAppUrl(shareText);
     window.open(whatsappUrl, '_blank');
   }
@@ -79,33 +76,43 @@ function shareHome() {
       url: link,
     }).catch(err => console.log('Compartilhamento cancelado:', err));
   } else {
-    // Fallback: abrir WhatsApp
     const whatsappUrl = buildWhatsAppUrl(shareText);
     window.open(whatsappUrl, '_blank');
   }
 }
 
+// ─── TEMA: ponto único de verdade ────────────────────────────────────────────
+// Fonte: localStorage['novachance-theme'] → 'dark' | 'light'
+// Regra:  só muda ao clicar no botão. Navegar entre páginas nunca altera o tema.
+
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
+  localStorage.setItem(STORAGE_KEY, theme);          // garante que está salvo
   const toggle = document.querySelector('.theme-toggle');
   if (!toggle) return;
   const isDark = theme === DEFAULT_DARK;
   toggle.setAttribute('aria-pressed', String(!isDark));
-  toggle.querySelector('.theme-toggle__icon').textContent = isDark ? '☀' : '☾';
+  toggle.querySelector('.theme-toggle__icon').textContent  = isDark ? '☀' : '☾';
   toggle.querySelector('.theme-toggle__label').textContent = isDark ? 'Tema claro' : 'Tema escuro';
 }
 
 function initializeTheme() {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const theme = stored || (prefersDark ? DEFAULT_DARK : 'light');
-  applyTheme(theme);
+  // Lê o que o script inline já aplicou no <html> — sem re-calcular, sem flash
+  const current = document.documentElement.dataset.theme || DEFAULT_DARK;
+  // Se por algum motivo o atributo estiver vazio, salva no storage agora
+  if (!localStorage.getItem(STORAGE_KEY)) {
+    localStorage.setItem(STORAGE_KEY, current);
+  }
+  // Sincroniza apenas o estado visual do botão (ícone/label/aria)
+  applyTheme(localStorage.getItem(STORAGE_KEY));
+
+  // Clique no botão: único ponto que muda o tema
   document.querySelector('.theme-toggle')?.addEventListener('click', () => {
-    const nextTheme = document.documentElement.dataset.theme === DEFAULT_DARK ? 'light' : DEFAULT_DARK;
-    localStorage.setItem(STORAGE_KEY, nextTheme);
-    applyTheme(nextTheme);
+    const next = document.documentElement.dataset.theme === DEFAULT_DARK ? 'light' : DEFAULT_DARK;
+    applyTheme(next);
   });
 }
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function loadCatalog() {
   const response = await fetch(getCatalogPath(), { cache: 'no-store' });
@@ -116,7 +123,6 @@ async function loadCatalog() {
 }
 
 function formatProductUrl(product) {
-  // Always point to index.html for maximum compatibility on GitHub Pages.
   return resolvePath(`./products/${product.slug}/index.html`);
 }
 
@@ -141,28 +147,32 @@ function renderFooter(product) {
         </div>
       </div>
       <div class="footer-col">
-        <h4 class="footer-col-title">Navegação</h4>
-        <ul class="footer-links">
-          <li><a href="${homePrefix}index.html">Início</a></li>
-          <li><a href="${homePrefix}index.html#beneficios">Benefícios</a></li>
-          <li><a href="${homePrefix}index.html#catalogo">Catálogo</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4 class="footer-col-title">Contato</h4>
-        <ul class="footer-links">
-          <li><a href="${buildWhatsAppUrl(whatsappMessage)}" target="_blank" rel="noreferrer">WhatsApp</a></li>
-          <li><span class="footer-location">Metrô São Judas, SP</span></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4 class="footer-col-title">Categorias</h4>
-        <ul class="footer-links">
-          <li><a href="${homePrefix}index.html#catalogo">💻 Tecnologia</a></li>
-          <li><a href="${homePrefix}index.html#catalogo">🏠 Casa</a></li>
-          <li><a href="${homePrefix}index.html#catalogo">🪴 Decoração</a></li>
-          <li><a href="${homePrefix}index.html#catalogo">👟 Estilo & Bem-estar</a></li>
-        </ul>
+        <div class="footer-links-group">
+          <div>
+            <h4 class="footer-col-title">Navegação</h4>
+            <ul class="footer-links">
+              <li><a href="${homePrefix}index.html">Início</a></li>
+              <li><a href="${homePrefix}index.html#beneficios">Benefícios</a></li>
+              <li><a href="${homePrefix}index.html#catalogo">Catálogo</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="footer-col-title">Contato</h4>
+            <ul class="footer-links">
+              <li><a href="${buildWhatsAppUrl(whatsappMessage)}" target="_blank" rel="noreferrer">WhatsApp</a></li>
+              <li><span class="footer-location">Metrô São Judas, SP</span></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="footer-col-title">Categorias</h4>
+            <ul class="footer-links">
+              <li><a href="${homePrefix}index.html#catalogo">💻 Tecnologia</a></li>
+              <li><a href="${homePrefix}index.html#catalogo">🏠 Casa</a></li>
+              <li><a href="${homePrefix}index.html#catalogo">🪴 Decoração</a></li>
+              <li><a href="${homePrefix}index.html#catalogo">👟 Estilo & Bem-estar</a></li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
     <div class="footer-bottom">
@@ -197,7 +207,6 @@ function renderHome(products) {
 
   const sorted = [...products].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   
-  // Render category filters
   if (filterContainer) {
     const storedCategory = localStorage.getItem(ACTIVE_CATEGORY_KEY) || 'todos';
     filterContainer.innerHTML = Object.entries(CATEGORIES)
@@ -214,26 +223,22 @@ function renderHome(products) {
       `)
       .join('');
     
-    // Add click handlers
     filterContainer.querySelectorAll('.category-filter').forEach(button => {
       button.addEventListener('click', () => {
         const category = button.dataset.category;
         localStorage.setItem(ACTIVE_CATEGORY_KEY, category);
         
-        // Update UI
         filterContainer.querySelectorAll('.category-filter').forEach(btn => {
           const isActive = btn.dataset.category === category;
           btn.classList.toggle('active', isActive);
           btn.setAttribute('aria-pressed', String(isActive));
         });
         
-        // Re-render products
         renderFilteredProducts(sorted, category);
       });
     });
   }
   
-  // Render initial products
   const storedCategory = localStorage.getItem(ACTIVE_CATEGORY_KEY) || 'todos';
   renderFilteredProducts(sorted, storedCategory);
 }
@@ -297,12 +302,14 @@ function renderFilteredProducts(products, category) {
     </div>
   `;
 }
+
 function setupShareButton(product) {
   const shareBtn = document.querySelector('[data-share-product]');
   if (shareBtn) {
     shareBtn.addEventListener('click', () => shareProduct(product));
   }
 }
+
 function renderProduct(products) {
   const detailRoot = document.querySelector('#product-detail');
   if (!detailRoot) return;
@@ -411,6 +418,7 @@ function renderStaticHeaderState() {
 }
 
 async function bootstrap() {
+  // FIX #6: tema inicializado ANTES de qualquer renderização, em toda página
   initializeTheme();
   const page = document.body.dataset.page;
   if (page === 'home') {
